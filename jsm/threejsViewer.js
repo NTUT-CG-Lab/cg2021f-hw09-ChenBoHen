@@ -1,7 +1,7 @@
 import * as THREE from "../threejs/build/three.module.js";
 import { MarchingCubes } from '../threejs/examples/jsm/objects/MarchingCubes.js'
 import { OrbitControls } from '../threejs/examples/jsm/controls/OrbitControls.js'
-//加入新的3D物件
+
 class threejsViewer {
     constructor(domElement) {
         this.size = 0
@@ -68,20 +68,40 @@ class threejsViewer {
             this.camera.aspect = width / height
             this.camera.updateProjectionMatrix();
         })
+
         let mesh = null
-
-        this.loadData = (paddingData, size, isovalue) => {
-            mesh = new MarchingCubes(size)
-            mesh.material = new THREE.MeshPhongMaterial()
-            mesh.isolation = isovalue
-            mesh.field = paddingData
-
+        this.loadData = () => {
+            if (this.scene.getObjectByName("model") != undefined){
+                this.scene.remove(mesh)
+            }
+            mesh = new MarchingCubes(this.size)
+            mesh.material = new THREE.MeshPhongMaterial()     
+            mesh.isolation = this.threshold
+            mesh.field = this.databuffer
+            mesh.position.y = 1
+            mesh.name = "model"
             this.scene.add(mesh)
         }
 
+        this.updateModel = () =>{
+            let mesh = this.scene.getObjectByName("model")
+            if (mesh != undefined){
+                mesh.isolation = this.threshold
+                mesh.field = this.databuffer
+                if (this.textureOption == 0){
+                    mesh.material = new THREE.MeshPhongMaterial()
+                }
+                else if (this.textureOption == 1){
+                    mesh.material = new THREE.MeshNormalMaterial()
+                }
+            }
+        }
+
+        
         this.download = () => {
-            mesh.generateGeometry()
-            return mesh
+            let geometry = mesh.generateGeometry()
+            let m = new THREE.Mesh(geometry)
+            return m
         }
 
         this.renderScene()

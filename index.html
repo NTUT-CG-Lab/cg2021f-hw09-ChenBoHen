@@ -131,8 +131,8 @@
 
             <!--閥值-->
             <div class="labelLayout">
-                <label for="isovalueSlider">閥值:0/0</label>
-                <input class="labelInput" id="isovalueSlider" type="range" name="settingForm" min=0 max=1000>
+                <label for="isovalueSlider" id="labelText">閥值:0/0</label>
+                <input class="labelInput" id="isovalueSlider" type="range" name="settingForm" min=0 max=255>
             </div>
 
             <!--紋理-->
@@ -159,7 +159,7 @@
     <script src="js/scoreoutputer.min.js"></script>
     <script>
         // 建構子 ScoreOutputer 接受一個字串，該字串為 csv 的檔案名稱
-        var so = new ScoreOutputer("109114514");
+        var so = new ScoreOutputer("109598045");
         so.installCSS(function () {
             // 安裝 bootstrap 的 css，如果在 html 上方引用 bootstrap 5.1.1 的話就不用使用 installCSS ，注意一定要 bootstrap css 5.1.1 版
             // installCSS 接收一個 callback 當作參數，作為成功安裝 bootstrap css 的回呼函式
@@ -172,9 +172,9 @@
             //addChild 要比 renderModal 先呼叫
             so.addChild("讀取文件並顯示資訊", 4, true);
             so.addChild("生成模型", 2, true);
-            so.addChild("閥值控制", 1, false);
-            so.addChild("文件下載", 1, false);
-            so.addChild("材質更換", 2, false);
+            so.addChild("閥值控制", 1, true);
+            so.addChild("文件下載", 1, true);
+            so.addChild("材質更換", 2, true);
 
             //產生自評表，參數如下所示
             so.renderModal(
@@ -205,8 +205,9 @@
         });
     </script>
     <script type="module">
+
         import { threejsViewer } from './jsm/threejsViewer.js'
-        import { STLExporter } from './threejs/examples/jsm/exporters/STLExporter.js';
+        import { STLExporter } from "./threejs/examples/jsm/exporters/STLExporter.js";
 
         const fileRegex = /(\w+)_(\d+)x(\d+)x(\d+)_(\w+)\.*/;
 
@@ -237,58 +238,79 @@
 
             // RAW文件讀取
             elements[0].addEventListener('change', (evt) => {
-                let fr = new FileReader();
-                let files = evt.target.files;
-                if(files.length <=0){
-                    return 
+                let fr = new FileReader()
+
+                let files = evt.target.files
+                if(files.length <= 0){
+                    return
                 }
 
-                let file = evt.target.files[0];
-                let filename = file.name;
-                filename = filename.split('.');
-                let values = filename[0].split('.');
+                let file = evt.target.files[0]
+                let filename = file.name
 
-                let width = values[1];
-                let height = values[2];
-                let depth = values[3];
-                let byte = values[4];
+                filename = filename.split('.')
+                let values = filename[0].split('_')
 
-                let data = null;
-                let paddingData = null;
-
+                let width = values[1]
+                let height = values[2]
+                let depth = values[3]
+                let byte = values[4]
                 let max = Math.max(width, height, depth)
-                fr.onload = () => {
-                    let result = fr.result;
-                    if(byte == 'uint8'){
-                        data = new Uint8Array(max * max * max);
+                let data = null
+                let paddingData = null
 
-                        modelView.loadData(paddingData, width, height, depth, 75);
+                fr.onload = () => {
+                    let result = fr.result
+                    if (byte == 'uint8'){
+                        data = new Uint8Array(result)
+                        paddingData = new Uint8Array(max * max * max)
+
+                        modelView.databuffer = data
+                        modelView.size = max
+                        modelView.threshold = 75
+                        modelView.textureOption = 0
+                        modelView.loadData()
+                        console.log(width, height, depth, byte)
                     }
                 }
+                
+                fr.readAsArrayBuffer(file)
 
-                fr.readAsArrayBuffer(file);
+                document.getElementById("isovalueSlider").value = 75
+                document.getElementById("labelText").innerText = "閥值:75/255"
             })
 
             // 模型資料下載
             elements[1].addEventListener('click', (evt) => {
+                let exporter = new STLExporter()
+                let mesh = modelView.download()
 
+                let result = exporter.parse(mesh, {binary: true})
+                let blob = new Blob([result], {type:'application/octet-stream'})
+
+                let dlLink = document.createElement('a')
+                dlLink.href = URL.createObjectURL(blob)
+                dlLink.download = "test.stl";
+                dlLink.click()
             })
 
             // 閥值設定
             elements[2].addEventListener('click', (evt) => {
-
+                let isovalue = evt.srcElement.value
+                modelView.threshold = isovalue
+                document.getElementById("labelText").innerText = "閥值:" + isovalue + "/255"
+                modelView.updateModel()
             })
 
             // 紋理設置
             elements[3].addEventListener('change', (evt) => {
-
+                let selectTextureIndex = evt.srcElement.value
+                modelView.textureOption = selectTextureIndex
+                modelView.updateModel()
             })
 
             // 模型網格顯示
             elements[4].addEventListener('change', (evt) => {
-                let exporter = new STLExporter()
-                let mesh = modelView.download()
-                let result = exporter.parse(mesh, {binary: true})
 
             })
         }
